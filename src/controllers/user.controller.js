@@ -139,8 +139,11 @@ const logoutUser = asyncHandler(async(req, res)=> {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined
+            // $set: {
+            //     refreshToken: undefined
+            // }
+            $unset: {
+                refreshToken: 1  //better approach
             }
         },
         {
@@ -157,7 +160,7 @@ const logoutUser = asyncHandler(async(req, res)=> {
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
     .json(
-        new ApiResponse(200, {}, "User Logged out")
+        new ApiResponse(200, {}, "User is Logged out")
     )
 
 })
@@ -166,7 +169,7 @@ const logoutUser = asyncHandler(async(req, res)=> {
 const refreshAccessToken = asyncHandler(async(req, res)=>{
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
     if(!incomingRefreshToken){
-        throw new ApiError(401, "unauhtorized request")
+        throw new ApiError(401, "unauthorized request")
     }
 
     try {
