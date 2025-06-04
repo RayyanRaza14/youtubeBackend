@@ -270,7 +270,7 @@ const updateAccountDetails = asyncHandler(async(req, res)=>{
         throw new ApiError(401,"Fullname or Email not found")
     }
 
-    const user  =await User.findByIdAndUpdate(
+    const user  = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
