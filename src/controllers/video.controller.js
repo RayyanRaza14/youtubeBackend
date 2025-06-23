@@ -10,6 +10,53 @@ import {uploadOnCloudinary} from "../utils/cloudinary.js"
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+
+
+    const pageNum = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    const matchStage = {
+        isPublished: true,
+    }
+
+    if(query){
+        matchStage.title = {$regex: query, $options: 1}
+    }
+
+    if(userId){
+        matchStage.owner = new mongoose.Types.ObjectId(userId)
+    }
+
+
+    const sortStage = {
+        [sortBy || "createdAt"]: sortType === "asc" ? 1 : -1,
+    }
+
+    const aggregate = Video.aggregate([
+        {
+            $match: matchStage
+        },
+        {
+            $sort: sortStage
+        }
+    ])
+
+
+    const options = {
+        page: pageNum,
+        limit: limitNum
+
+    }
+
+    const result = await Video.aggregatePaginate(aggregate, options)
+
+
+    return res.status(200)
+    .json(new ApiResponse(
+        200,
+        result,
+        "All videos retrieved successfully"
+    ))
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -182,6 +229,28 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
+    if(!videoId){
+        throw new ApiError(404, "Video Id not found")
+    }
+
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "Video not found")
+    }
+
+    video.isPublished = !video.isPublished
+    await video.save()
+
+   
+
+    return res.status(200)
+    .json(new ApiResponse(
+        200,
+        video,
+        `Video is ${video.isPublished? "published": "unpublished"} successfully`
+    ))
 })
 
 export {
