@@ -81,29 +81,19 @@ const publishAVideo = asyncHandler(async (req, res) => {
     const thumbnailLocalPath = req.files?.thumbnail[0]?.path
 
     if(!videoLocalPath || !thumbnailLocalPath){
-        throw new ApiError(401, "Files local path not found")
+        throw new ApiError(404, "Files local path not found")
     }
 
-    const video = uploadOnCloudinary(videoLocalPath)
-    const thumbnail = uploadOnCloudinary(thumbnailLocalPath)
+    const video = await uploadOnCloudinary(videoLocalPath)
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if(!video.url || !thumbnail.url || !video.duration){
+        throw new ApiError(500, "Cloudinary upload failed")
+    }
 
     const user = await User.findById(req.user?._id).select("-password -refreshToken")
 
-    const owner = await User.aggregate([
-        {
-            $match: {
-                owner: user
-            }
-        },
-        {
-            $lookup: {
-                from: "videos",
-                localField: "owner",
-                foreignField: "_id",
-                as: "videoOwner"
-            }
-        }
-    ])
+    const owner = user._id
 
     const videoObject = await Video.create({
         title,
@@ -113,18 +103,18 @@ const publishAVideo = asyncHandler(async (req, res) => {
         owner,
         isPublished: true,
         duration: video?.duration,
-        views,
+        views: 0,
     }) 
 
-    const videoUploaded = await Video.find(videoObject)
-    if(!videoObject){
-        throw new ApiError(400, "Video upload failed")
-    }
+    // const videoUploaded = await Video.find(videoObject)
+    // if(!videoObject){
+    //     throw new ApiError(400, "Video upload failed")
+    // }
 
     return res.status(200)
     .json(new ApiResponse(
         200,
-        videoUploaded,
+        videoObject,
         "Video uploaded successfully"
     ))
    
@@ -158,31 +148,38 @@ const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     const {title, description} = req.body
 
-    const videoLocalPath = req.files?.videoFile[0]?.path
-    const thumbnailLocalPath = req.files?.thumbnail[0]?.path
-
-    const video = await uploadOnCloudinary(videoLocalPath)
-    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
-
-    if(!video){
-        throw new ApiError(400, "Could not upload video on cloudinary")
-    }
-    if(!thumbnail){
-        throw new ApiError(400, "Could not upload thumbnail file on cloudinary")
-    }
+    let thumbnail
 
     if(!videoId){
         throw new ApiError(400, "Invalid video URL")
     }
 
+   if(req.file){
+     const thumbnailLocalPath = req.file?.path
+
+    if(!thumbnailLocalPath){
+        throw new ApiError(404, "Thumbnail local path not found")
+    }
+    
+
+    thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if(!thumbnail){
+        throw new ApiError(400, "Could not upload thumbnail file on cloudinary")
+    }
+   }
+
+    const updateData = {}
+
+    if(title) updateData.title = title
+    if(description) updateData.description = description
+    if(thumbnail) updateData.thumbnail = thumbnail.url
+
+    
+
     const updatedVideo = await Video.findByIdAndUpdate(videoId, 
         {
-            $set: {
-                title: title,
-                description: description,
-                videoFile: video.url,
-                thumbnail: thumbnail.url
-            }
+            $set: updateData
         },
         {
             new: true
@@ -210,7 +207,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     // optional mongoID format validation
-    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    if (!isValidObjectId(videoId)) {
         throw new ApiError(400, "Invalid video ID format");
     }
 
