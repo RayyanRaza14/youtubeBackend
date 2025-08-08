@@ -67,7 +67,6 @@ const publishAVideo = asyncHandler(async (req, res) => {
     // validate data
     // check files, thumnail, video 
     // upload them to cloudinary
-    // create pipeline for the owner of video
     // create video object
     // check for video upload 
     // return response
