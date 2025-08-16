@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose"
+// import mongoose, { isValidObjectId } from "mongoose"
 import {Tweet} from "../models/tweet.model.js"
 import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.js"
@@ -30,13 +30,12 @@ const createTweet = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Error while adding tweet")
     }
 
-    return res.status(200
-        .json(new ApiResponse(
-            200,
-            tweet,
-            "Tweeted Successfully"
-        ))
-    )
+    return res.status(200)
+    .json(new ApiResponse(
+        200,
+        tweet,
+        "Tweet created successfully!"
+    ))
 })
 
 const getUserTweets = asyncHandler(async (req, res) => {
@@ -52,7 +51,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
         throw new ApiError(404, "User not found")
     }
 
-    const tweets = await Tweet.find({owner: userId}).sort({ created: -1})
+    const tweets = await Tweet.find({owner: userId}).sort({ createdAt: -1})
    
     if(!tweets){
         throw new ApiError(404, "No record found")
